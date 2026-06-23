@@ -8,9 +8,13 @@ const bestScoreText = document.getElementById('bestScore');
 const gameStatusText = document.getElementById('gameStatus');
 const startPanel = document.getElementById('startPanel');
 const gameOverPanel = document.getElementById('gameOverPanel');
+const stageClearPanel = document.getElementById('stageClearPanel');
+const stageClearTitle = document.getElementById('stageClearTitle');
+const stageClearMessage = document.getElementById('stageClearMessage');
 const winPanel = document.getElementById('winPanel');
 const startButton = document.getElementById('startButton');
 const restartButton = document.getElementById('restartButton');
+const nextStageButton = document.getElementById('nextStageButton');
 const winRestartButton = document.getElementById('winRestartButton');
 const finalScoreText = document.getElementById('finalScore');
 const winScoreText = document.getElementById('winScore');
@@ -23,15 +27,15 @@ const loseRankMessage = document.getElementById('loseRankMessage');
 const rankingList = document.getElementById('rankingList');
 const clearRankButton = document.getElementById('clearRankButton');
 
-const WIN_SCORE = 15;
+const FINAL_WIN_SCORE = 45;
 const OBSTACLE_SCORE = 3;
 const RANKING_KEY = 'jumpTimingRanking';
 const OBSTACLE_START_OFFSET = 70;
 
 const STAGES = [
-  { level: 1, minScore: 0, speed: 500, label: '1단계' },
-  { level: 2, minScore: 6, speed: 620, label: '2단계' },
-  { level: 3, minScore: 12, speed: 760, label: '3단계' }
+  { level: 1, goalScore: 15, speed: 500, label: '1단계' },
+  { level: 2, goalScore: 30, speed: 650, label: '2단계' },
+  { level: 3, goalScore: 45, speed: 820, label: '3단계' }
 ];
 
 let isPlaying = false;
@@ -48,8 +52,8 @@ let hasScoredCurrentObstacle = false;
 let isRankSavedThisRound = false;
 let currentResult = '패배';
 
-goalScoreText.textContent = WIN_SCORE;
-winScoreText.textContent = WIN_SCORE;
+goalScoreText.textContent = currentStage.goalScore;
+winScoreText.textContent = FINAL_WIN_SCORE;
 bestScoreText.textContent = bestScore;
 stageText.textContent = currentStage.label;
 renderRanking();
@@ -126,6 +130,7 @@ function startGame() {
   player.classList.remove('jump');
   scoreText.textContent = score;
   stageText.textContent = currentStage.label;
+  goalScoreText.textContent = currentStage.goalScore;
   gameStatusText.textContent = '진행 중';
   rankMessage.textContent = '';
   loseRankMessage.textContent = '';
@@ -135,6 +140,7 @@ function startGame() {
   loseNicknameInput.disabled = false;
   startPanel.classList.add('hidden');
   gameOverPanel.classList.add('hidden');
+  stageClearPanel.classList.add('hidden');
   winPanel.classList.add('hidden');
 
   cancelAnimationFrame(animationFrameId);
@@ -181,36 +187,54 @@ function jump() {
   }, 520);
 }
 
-function getStageByScore(currentScore) {
-  let selectedStage = STAGES[0];
-
-  STAGES.forEach((stage) => {
-    if (currentScore >= stage.minScore) {
-      selectedStage = stage;
-    }
-  });
-
-  return selectedStage;
+function getNextStage() {
+  return STAGES.find((stage) => stage.level === currentStage.level + 1) || null;
 }
 
-function updateStage() {
-  const nextStage = getStageByScore(score);
+function clearCurrentStage() {
+  const nextStage = getNextStage();
 
-  if (nextStage.level !== currentStage.level) {
-    currentStage = nextStage;
-    obstacleSpeed = currentStage.speed;
-    stageText.textContent = currentStage.label;
-    gameStatusText.textContent = `${currentStage.label} 진행 중`;
+  if (!nextStage) {
+    winGame();
+    return;
   }
+
+  isPlaying = false;
+  stopGameLoop();
+  saveBestScore();
+  playWinSound();
+
+  gameStatusText.textContent = `${currentStage.label} 클리어`;
+  stageClearTitle.textContent = `${currentStage.label} 클리어!`;
+  stageClearMessage.textContent = `${nextStage.label}부터 장애물 속도가 더 빨라집니다.`;
+  stageClearPanel.classList.remove('hidden');
+}
+
+function startNextStage() {
+  const nextStage = getNextStage();
+  if (!nextStage) return;
+
+  currentStage = nextStage;
+  obstacleSpeed = currentStage.speed;
+  hasScoredCurrentObstacle = false;
+  isPlaying = true;
+
+  stageText.textContent = currentStage.label;
+  goalScoreText.textContent = currentStage.goalScore;
+  gameStatusText.textContent = `${currentStage.label} 진행 중`;
+  stageClearPanel.classList.add('hidden');
+
+  resetObstaclePosition();
+  lastFrameTime = performance.now();
+  animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 function addObstacleScore() {
   score += OBSTACLE_SCORE;
   scoreText.textContent = score;
-  updateStage();
 
-  if (score >= WIN_SCORE) {
-    winGame();
+  if (score >= currentStage.goalScore) {
+    clearCurrentStage();
   }
 }
 
@@ -346,7 +370,8 @@ function winGame() {
 
   isPlaying = false;
   currentResult = '승리';
-  gameStatusText.textContent = '승리';
+  gameStatusText.textContent = '최종 승리';
+  winScoreText.textContent = FINAL_WIN_SCORE;
   playWinSound();
 
   stopGameLoop();
@@ -364,6 +389,11 @@ startButton.addEventListener('click', (event) => {
 restartButton.addEventListener('click', (event) => {
   event.stopPropagation();
   startGame();
+});
+
+nextStageButton.addEventListener('click', (event) => {
+  event.stopPropagation();
+  startNextStage();
 });
 
 winRestartButton.addEventListener('click', (event) => {

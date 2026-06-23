@@ -129,6 +129,7 @@ body {
 
 .start-panel,
 .game-over-panel,
+.stage-clear-panel,
 .win-panel {
   position: absolute;
   inset: 0;
@@ -144,6 +145,7 @@ body {
 
 .start-panel h2,
 .game-over-panel h2,
+.stage-clear-panel h2,
 .win-panel h2 {
   margin: 0 0 8px;
   font-size: 34px;
@@ -151,6 +153,7 @@ body {
 
 .start-panel p,
 .game-over-panel p,
+.stage-clear-panel p,
 .win-panel p {
   margin: 0 0 20px;
   color: #333;

@@ -13,22 +13,31 @@ const restartButton = document.getElementById('restartButton');
 const winRestartButton = document.getElementById('winRestartButton');
 const finalScoreText = document.getElementById('finalScore');
 const winScoreText = document.getElementById('winScore');
+const rankForm = document.getElementById('rankForm');
+const nicknameInput = document.getElementById('nicknameInput');
+const rankMessage = document.getElementById('rankMessage');
+const rankingList = document.getElementById('rankingList');
+const clearRankButton = document.getElementById('clearRankButton');
 
-const WIN_SCORE = 100;
+const WIN_SCORE = 15;
+const OBSTACLE_SCORE = 3;
+const RANKING_KEY = 'jumpTimingRanking';
 
 let isPlaying = false;
 let isJumping = false;
 let score = 0;
 let bestScore = Number(localStorage.getItem('jumpTimingBestScore')) || 0;
-let scoreTimer = null;
 let collisionTimer = null;
 let difficultyTimer = null;
 let obstacleSpeed = 1.7;
 let audioContext = null;
+let hasScoredCurrentObstacle = false;
+let isRankSavedThisRound = false;
 
 goalScoreText.textContent = WIN_SCORE;
 winScoreText.textContent = WIN_SCORE;
 bestScoreText.textContent = bestScore;
+renderRanking();
 
 function getAudioContext() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -101,10 +110,15 @@ function startGame() {
   isJumping = false;
   score = 0;
   obstacleSpeed = 1.7;
+  hasScoredCurrentObstacle = false;
+  isRankSavedThisRound = false;
 
   player.classList.remove('jump');
   scoreText.textContent = score;
   gameStatusText.textContent = '진행 중';
+  rankMessage.textContent = '';
+  nicknameInput.value = '';
+  nicknameInput.disabled = false;
   startPanel.classList.add('hidden');
   gameOverPanel.classList.add('hidden');
   winPanel.classList.add('hidden');
@@ -114,12 +128,10 @@ function startGame() {
   obstacle.style.animationDuration = `${obstacleSpeed}s`;
   obstacle.classList.add('move');
 
-  clearInterval(scoreTimer);
   clearInterval(collisionTimer);
   clearInterval(difficultyTimer);
 
-  scoreTimer = setInterval(addScore, 100);
-  collisionTimer = setInterval(checkCollision, 20);
+  collisionTimer = setInterval(checkGameState, 20);
   difficultyTimer = setInterval(increaseDifficulty, 3000);
 }
 
@@ -136,8 +148,8 @@ function jump() {
   }, 520);
 }
 
-function addScore() {
-  score += 1;
+function addObstacleScore() {
+  score += OBSTACLE_SCORE;
   scoreText.textContent = score;
 
   if (score >= WIN_SCORE) {
@@ -150,9 +162,10 @@ function increaseDifficulty() {
   obstacle.style.animationDuration = `${obstacleSpeed}s`;
 }
 
-function checkCollision() {
+function checkGameState() {
   const playerBox = player.getBoundingClientRect();
   const obstacleBox = obstacle.getBoundingClientRect();
+  const gameBox = game.getBoundingClientRect();
 
   const isColliding =
     playerBox.left < obstacleBox.right &&
@@ -162,13 +175,25 @@ function checkCollision() {
 
   if (isColliding) {
     endGame();
+    return;
+  }
+
+  const passedObstacle = obstacleBox.right < playerBox.left;
+  const obstacleResetToRight = obstacleBox.left > gameBox.right;
+
+  if (passedObstacle && !hasScoredCurrentObstacle) {
+    hasScoredCurrentObstacle = true;
+    addObstacleScore();
+  }
+
+  if (obstacleResetToRight) {
+    hasScoredCurrentObstacle = false;
   }
 }
 
 function stopGameLoop() {
   obstacle.classList.remove('move');
 
-  clearInterval(scoreTimer);
   clearInterval(collisionTimer);
   clearInterval(difficultyTimer);
 }
@@ -179,6 +204,53 @@ function saveBestScore() {
     localStorage.setItem('jumpTimingBestScore', bestScore);
     bestScoreText.textContent = bestScore;
   }
+}
+
+function getRanking() {
+  const savedRanking = localStorage.getItem(RANKING_KEY);
+
+  if (!savedRanking) return [];
+
+  try {
+    return JSON.parse(savedRanking);
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveRanking(ranking) {
+  localStorage.setItem(RANKING_KEY, JSON.stringify(ranking));
+}
+
+function addRanking(nickname) {
+  const ranking = getRanking();
+
+  ranking.push({
+    nickname,
+    score,
+    date: new Date().toLocaleDateString('ko-KR')
+  });
+
+  ranking.sort((a, b) => b.score - a.score);
+  saveRanking(ranking.slice(0, 10));
+  renderRanking();
+}
+
+function renderRanking() {
+  const ranking = getRanking();
+
+  rankingList.innerHTML = '';
+
+  if (ranking.length === 0) {
+    rankingList.innerHTML = '<li class="empty-rank">아직 등록된 기록이 없습니다.</li>';
+    return;
+  }
+
+  ranking.forEach((rank) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${rank.nickname}</strong> - ${rank.score}점 <span class="rank-date">${rank.date}</span>`;
+    rankingList.appendChild(li);
+  });
 }
 
 function endGame() {
@@ -206,6 +278,7 @@ function winGame() {
   saveBestScore();
 
   winPanel.classList.remove('hidden');
+  nicknameInput.focus();
 }
 
 startButton.addEventListener('click', (event) => {
@@ -223,8 +296,35 @@ winRestartButton.addEventListener('click', (event) => {
   startGame();
 });
 
+rankForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (isRankSavedThisRound) {
+    rankMessage.textContent = '이미 이번 기록을 등록했습니다.';
+    return;
+  }
+
+  const nickname = nicknameInput.value.trim();
+
+  if (nickname.length === 0) {
+    rankMessage.textContent = '닉네임을 입력해주세요.';
+    return;
+  }
+
+  addRanking(nickname);
+  isRankSavedThisRound = true;
+  nicknameInput.disabled = true;
+  rankMessage.textContent = '랭킹에 등록되었습니다!';
+});
+
+clearRankButton.addEventListener('click', () => {
+  localStorage.removeItem(RANKING_KEY);
+  renderRanking();
+});
+
 game.addEventListener('click', (event) => {
-  if (event.target.tagName === 'BUTTON') return;
+  if (event.target.tagName === 'BUTTON' || event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL') return;
   jump();
 });
 

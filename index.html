@@ -15,7 +15,7 @@
 
     <section class="hud">
       <div>점수: <strong id="score">0</strong></div>
-      <div>목표: <strong id="goalScore">100</strong></div>
+      <div>목표: <strong id="goalScore">15</strong></div>
       <div>최고점수: <strong id="bestScore">0</strong></div>
       <div>상태: <strong id="gameStatus">대기 중</strong></div>
     </section>
@@ -28,7 +28,7 @@
 
       <div id="startPanel" class="start-panel">
         <h2>게임 시작</h2>
-        <p>100점을 달성하면 승리합니다.</p>
+        <p>장애물 5개를 넘어서 15점을 달성하면 승리합니다.</p>
         <button id="startButton" type="button">시작하기</button>
       </div>
 
@@ -40,9 +40,29 @@
 
       <div id="winPanel" class="win-panel hidden">
         <h2>승리!</h2>
-        <p>목표 점수 <strong id="winScore">100</strong>점을 달성했습니다!</p>
+        <p>목표 점수 <strong id="winScore">15</strong>점을 달성했습니다!</p>
+
+        <form id="rankForm" class="rank-form">
+          <label for="nicknameInput">닉네임 남기기</label>
+          <div class="rank-input-row">
+            <input id="nicknameInput" type="text" maxlength="10" placeholder="닉네임 입력" autocomplete="off" />
+            <button id="saveRankButton" type="submit">등록</button>
+          </div>
+          <p id="rankMessage" class="rank-message"></p>
+        </form>
+
         <button id="winRestartButton" type="button">다시 시작</button>
       </div>
+    </section>
+
+    <section class="ranking-board">
+      <div class="ranking-title-row">
+        <h2>랭킹 TOP 10</h2>
+        <button id="clearRankButton" class="small-button" type="button">랭킹 초기화</button>
+      </div>
+      <ol id="rankingList" class="ranking-list">
+        <li class="empty-rank">아직 등록된 기록이 없습니다.</li>
+      </ol>
     </section>
 
     <section class="guide">

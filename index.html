@@ -20,20 +20,51 @@
       <div>생명: <strong id="lifeText">❤️❤️❤️</strong></div>
       <div>최고점수: <strong id="bestScore">0</strong></div>
       <div>상태: <strong id="gameStatus">대기 중</strong></div>
+      <button id="pauseButton" class="hud-button" type="button">일시정지</button>
     </section>
 
     <section id="game" class="game" aria-label="점프 타이밍 게임 화면">
       <div class="sky-text">SPACE / CLICK</div>
-      <div id="player" class="player"></div>
+      <div id="player" class="player">
+        <div class="stage-hat sprout-hat" aria-hidden="true">
+          <span class="sprout-stem"></span>
+          <span class="sprout-leaf sprout-left"></span>
+          <span class="sprout-leaf sprout-right"></span>
+        </div>
+        <div class="stage-hat flower-hat" aria-hidden="true">
+          <span class="flower-stem"></span>
+          <span class="flower-leaf flower-leaf-left"></span>
+          <span class="flower-leaf flower-leaf-right"></span>
+          <span class="flower-head">
+            <span class="petal petal-1"></span>
+            <span class="petal petal-2"></span>
+            <span class="petal petal-3"></span>
+            <span class="petal petal-4"></span>
+            <span class="petal petal-5"></span>
+            <span class="flower-center"></span>
+          </span>
+        </div>
+        <div class="stage-hat tree-hat" aria-hidden="true">
+          <span class="tree-trunk"></span>
+          <span class="tree-crown crown-left"></span>
+          <span class="tree-crown crown-center"></span>
+          <span class="tree-crown crown-right"></span>
+        </div>
+      </div>
       <div id="obstacle" class="obstacle"></div>
       <div id="medkit" class="medkit hidden" aria-label="구급상자">➕</div>
       <div id="effectText" class="effect-text hidden"></div>
       <div id="invincibleTimer" class="invincible-timer hidden">무적 5.0초</div>
+      <div id="pausePanel" class="pause-panel hidden">
+        <h2>일시정지</h2>
+        <p>P 또는 ESC로 계속할 수 있습니다.</p>
+        <button id="resumeButton" type="button">계속하기</button>
+      </div>
       <div class="ground"></div>
 
       <div id="startPanel" class="start-panel">
         <h2>게임 시작</h2>
-        <p>각 단계는 0점부터 시작합니다. 1단계 15점, 2단계 30점, 3단계 45점을 달성하세요. 생명은 단계마다 3개이며, 구급상자는 단계마다 최대 3번 등장하고, 너무 몰려 나오지 않게 배치됩니다. 단계별로 캐릭터 모자가 바뀝니다.</p>
+        <p>각 단계는 0점부터 시작합니다. 1단계 15점, 2단계 30점, 3단계 45점을 달성하세요. 생명은 단계마다 3개이며, 구급상자는 단계마다 최대 3번 등장하고, 너무 몰려 나오지 않게 배치됩니다. 단계별로 캐릭터 모자가 바뀝니다. P 또는 ESC로 일시정지할 수 있습니다.</p>
         <button id="startButton" type="button">시작하기</button>
       </div>
 
@@ -89,7 +120,7 @@
 
     <section class="guide">
       <h2>조작법</h2>
-      <p><strong>스페이스바</strong>, <strong>↑ 방향키</strong>, 또는 <strong>마우스 클릭</strong>으로 점프합니다. 길게 누르면 더 높이 점프합니다. 구급상자는 하트 1개를 회복하고, 하트가 가득 찬 상태에서는 5초 무적을 줍니다. 단계별 모자: 1단계 새싹, 2단계 꽃, 3단계 나무.</p>
+      <p><strong>스페이스바</strong>, <strong>↑ 방향키</strong>, 또는 <strong>마우스 클릭</strong>으로 점프합니다. 길게 누르면 더 높이 점프합니다. 구급상자는 하트 1개를 회복하고, 하트가 가득 찬 상태에서는 5초 무적을 줍니다. 단계별 모자: 1단계 새싹, 2단계 줄기꽃, 3단계 귀여운 나무. <strong>P</strong> 또는 <strong>ESC</strong>로 일시정지합니다.</p>
     </section>
   </main>
 

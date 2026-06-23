@@ -32,6 +32,14 @@ body {
   color: #555;
 }
 
+
+.hud-button {
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
 .hud {
   display: flex;
   justify-content: space-between;
@@ -98,31 +106,162 @@ body {
   border-radius: 50%;
 }
 
-.player::after {
+.stage-hat {
   position: absolute;
   left: 50%;
-  bottom: 36px;
+  bottom: 38px;
   transform: translateX(-50%);
-  font-size: 30px;
-  line-height: 1;
-  filter: drop-shadow(0 2px 0 #222);
+  width: 58px;
+  height: 52px;
+  pointer-events: none;
+  display: none;
   z-index: 2;
 }
 
-.player.stage-1::after {
-  content: "🌱";
+.player.stage-1 .sprout-hat,
+.player.stage-2 .flower-hat,
+.player.stage-3 .tree-hat {
+  display: block;
 }
 
-.player.stage-2::after {
-  content: "🌸";
-  bottom: 37px;
-  font-size: 32px;
+.sprout-stem {
+  position: absolute;
+  left: 27px;
+  bottom: 4px;
+  width: 6px;
+  height: 24px;
+  background: #4f9b3a;
+  border: 3px solid #222;
+  border-radius: 999px;
 }
 
-.player.stage-3::after {
-  content: "🌳";
-  bottom: 34px;
-  font-size: 34px;
+.sprout-leaf {
+  position: absolute;
+  bottom: 22px;
+  width: 24px;
+  height: 16px;
+  background: #8bd85a;
+  border: 3px solid #222;
+  border-radius: 90% 10% 90% 10%;
+}
+
+.sprout-left {
+  left: 8px;
+  transform: rotate(24deg);
+}
+
+.sprout-right {
+  right: 7px;
+  transform: rotate(-70deg);
+}
+
+.flower-stem {
+  position: absolute;
+  left: 27px;
+  bottom: 0;
+  width: 6px;
+  height: 36px;
+  background: #56aa46;
+  border: 3px solid #222;
+  border-radius: 999px;
+}
+
+.flower-leaf {
+  position: absolute;
+  bottom: 12px;
+  width: 17px;
+  height: 12px;
+  background: #78c75c;
+  border: 2px solid #222;
+  border-radius: 90% 10% 90% 10%;
+}
+
+.flower-leaf-left {
+  left: 15px;
+  transform: rotate(20deg);
+}
+
+.flower-leaf-right {
+  right: 13px;
+  transform: rotate(-70deg);
+}
+
+.flower-head {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 36px;
+}
+
+.petal {
+  position: absolute;
+  left: 11px;
+  top: 11px;
+  width: 14px;
+  height: 14px;
+  background: #ff88ad;
+  border: 2px solid #222;
+  border-radius: 50%;
+}
+
+.petal-1 { transform: translateY(-12px); }
+.petal-2 { transform: rotate(72deg) translateY(-12px); }
+.petal-3 { transform: rotate(144deg) translateY(-12px); }
+.petal-4 { transform: rotate(216deg) translateY(-12px); }
+.petal-5 { transform: rotate(288deg) translateY(-12px); }
+
+.flower-center {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 12px;
+  height: 12px;
+  background: #ffd84d;
+  border: 2px solid #222;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.tree-trunk {
+  position: absolute;
+  left: 25px;
+  bottom: 0;
+  width: 10px;
+  height: 24px;
+  background: #8a5a2b;
+  border: 3px solid #222;
+  border-radius: 4px;
+}
+
+.tree-crown {
+  position: absolute;
+  background: #76c856;
+  border: 3px solid #222;
+  border-radius: 50%;
+}
+
+.crown-center {
+  left: 15px;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  background: #7ed957;
+}
+
+.crown-left {
+  left: 4px;
+  top: 12px;
+  width: 28px;
+  height: 28px;
+}
+
+.crown-right {
+  right: 3px;
+  top: 12px;
+  width: 28px;
+  height: 28px;
 }
 
 .obstacle {
@@ -141,7 +280,8 @@ body {
 .start-panel,
 .game-over-panel,
 .stage-clear-panel,
-.win-panel {
+.win-panel,
+.pause-panel {
   position: absolute;
   inset: 0;
   display: flex;
@@ -157,7 +297,8 @@ body {
 .start-panel h2,
 .game-over-panel h2,
 .stage-clear-panel h2,
-.win-panel h2 {
+.win-panel h2,
+.pause-panel h2 {
   margin: 0 0 8px;
   font-size: 34px;
 }
@@ -165,7 +306,8 @@ body {
 .start-panel p,
 .game-over-panel p,
 .stage-clear-panel p,
-.win-panel p {
+.win-panel p,
+.pause-panel p {
   margin: 0 0 20px;
   color: #333;
 }
@@ -371,5 +513,15 @@ button:hover {
 }
 
 .invincible-timer.hidden {
+  display: none;
+}
+
+
+.pause-panel {
+  background: rgba(255, 255, 255, 0.88);
+  z-index: 12;
+}
+
+.pause-panel.hidden {
   display: none;
 }

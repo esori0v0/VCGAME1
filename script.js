@@ -30,6 +30,9 @@ const loseNicknameInput = document.getElementById('loseNicknameInput');
 const loseRankMessage = document.getElementById('loseRankMessage');
 const rankingList = document.getElementById('rankingList');
 const clearRankButton = document.getElementById('clearRankButton');
+const pauseButton = document.getElementById('pauseButton');
+const pausePanel = document.getElementById('pausePanel');
+const resumeButton = document.getElementById('resumeButton');
 
 const FINAL_WIN_SCORE = 45;
 const OBSTACLE_SCORE = 1;
@@ -55,6 +58,7 @@ const STAGES = [
 const OBSTACLE_HEIGHTS = [42, 58, 76, 96, 118, 138, 152];
 
 let isPlaying = false;
+let isPaused = false;
 let isJumping = false;
 let isHoldingJump = false;
 let holdTime = 0;
@@ -81,6 +85,7 @@ let medkitSpawnScores = [];
 let medkitSpawnIndex = 0;
 let medkitCollectedCountThisStage = 0;
 let isMedkitActive = false;
+let pausedInvincibleRemainTime = 0;
 
 function initScreen() {
   goalScoreText.textContent = currentStage.goalScore;
@@ -203,6 +208,7 @@ function clearInvincible() {
   clearTimeout(invincibleTimer);
   clearInterval(invincibleCountdownTimer);
   invincibleTimerText.classList.add('hidden');
+  pausedInvincibleRemainTime = 0;
 }
 
 function decideMedkitSpawnScores() {
@@ -237,6 +243,7 @@ function decideMedkitSpawnScores() {
 
 function startGame() {
   isPlaying = true;
+  isPaused = false;
   isJumping = false;
   isHoldingJump = false;
   holdTime = 0;
@@ -272,6 +279,8 @@ function startGame() {
   gameOverPanel.classList.add('hidden');
   stageClearPanel.classList.add('hidden');
   winPanel.classList.add('hidden');
+  pausePanel.classList.add('hidden');
+  pauseButton.textContent = '일시정지';
   medkit.classList.add('hidden');
   effectText.classList.add('hidden');
 
@@ -282,7 +291,7 @@ function startGame() {
 }
 
 function gameLoop(currentTime) {
-  if (!isPlaying) return;
+  if (!isPlaying || isPaused) return;
 
   const deltaTime = Math.min((currentTime - lastFrameTime) / 1000, 0.033);
   lastFrameTime = currentTime;
@@ -365,7 +374,7 @@ function hideMedkit() {
 }
 
 function jump() {
-  if (!isPlaying || isJumping) return;
+  if (!isPlaying || isPaused || isJumping) return;
   isJumping = true;
   isHoldingJump = true;
   holdTime = 0;
@@ -418,6 +427,9 @@ function startNextStage() {
   decideMedkitSpawnScores();
   clearInvincible();
   isPlaying = true;
+  isPaused = false;
+  pausePanel.classList.add('hidden');
+  pauseButton.textContent = '일시정지';
 
   updatePlayerPosition();
   updateLifeUI();
@@ -506,6 +518,53 @@ function collectMedkit() {
   // 하트가 이미 가득 찬 상태에서 먹으면 정확히 5초 동안 무적
   setInvincible(MEDKIT_INVINCIBLE_TIME, true);
   showEffect('5초 무적!');
+}
+
+
+function pauseGame() {
+  if (!isPlaying || isPaused) return;
+  isPaused = true;
+  stopHoldingJump();
+  stopGameLoop();
+  gameStatusText.textContent = '일시정지';
+  pauseButton.textContent = '계속하기';
+  pausePanel.classList.remove('hidden');
+
+  if (isInvincible && invincibleEndTime > 0) {
+    pausedInvincibleRemainTime = Math.max(0, invincibleEndTime - Date.now());
+    clearTimeout(invincibleTimer);
+    clearInterval(invincibleCountdownTimer);
+  }
+}
+
+function resumeGame() {
+  if (!isPlaying || !isPaused) return;
+  isPaused = false;
+  gameStatusText.textContent = `${currentStage.label} 진행 중`;
+  pauseButton.textContent = '일시정지';
+  pausePanel.classList.add('hidden');
+
+  if (isInvincible && pausedInvincibleRemainTime > 0 && !invincibleTimerText.classList.contains('hidden')) {
+    invincibleEndTime = Date.now() + pausedInvincibleRemainTime;
+    updateInvincibleTimer();
+    invincibleCountdownTimer = setInterval(updateInvincibleTimer, 100);
+    invincibleTimer = setTimeout(() => {
+      isInvincible = false;
+      player.classList.remove('invincible');
+      clearInterval(invincibleCountdownTimer);
+      invincibleTimerText.classList.add('hidden');
+      pausedInvincibleRemainTime = 0;
+    }, pausedInvincibleRemainTime);
+  }
+
+  lastFrameTime = performance.now();
+  animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function togglePause() {
+  if (!isPlaying) return;
+  if (isPaused) resumeGame();
+  else pauseGame();
 }
 
 function stopGameLoop() {
@@ -604,6 +663,8 @@ function endGame() {
   playLoseSound();
   stopGameLoop();
   saveBestScore();
+  pausePanel.classList.add('hidden');
+  pauseButton.textContent = '일시정지';
   gameOverPanel.classList.remove('hidden');
   loseNicknameInput.focus();
 }
@@ -617,6 +678,8 @@ function winGame() {
   playWinSound();
   stopGameLoop();
   saveBestScore();
+  pausePanel.classList.add('hidden');
+  pauseButton.textContent = '일시정지';
   winPanel.classList.remove('hidden');
   nicknameInput.focus();
 }
@@ -634,6 +697,16 @@ restartButton.addEventListener('click', (event) => {
 nextStageButton.addEventListener('click', (event) => {
   event.stopPropagation();
   startNextStage();
+});
+
+pauseButton.addEventListener('click', (event) => {
+  event.stopPropagation();
+  togglePause();
+});
+
+resumeButton.addEventListener('click', (event) => {
+  event.stopPropagation();
+  resumeGame();
 });
 
 winRestartButton.addEventListener('click', (event) => {
@@ -673,8 +746,15 @@ game.addEventListener('touchstart', (event) => {
 game.addEventListener('touchend', stopHoldingJump);
 
 document.addEventListener('keydown', (event) => {
+  if (event.code === 'KeyP' || event.code === 'Escape') {
+    event.preventDefault();
+    togglePause();
+    return;
+  }
+
   if (event.code === 'Space' || event.code === 'ArrowUp') {
     event.preventDefault();
+    if (isPaused) return;
     if (!isPlaying && !startPanel.classList.contains('hidden')) {
       startGame();
       return;

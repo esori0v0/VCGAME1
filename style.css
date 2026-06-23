@@ -107,7 +107,7 @@ body {
     bottom: 82px;
   }
   45% {
-    bottom: 228px;
+    bottom: 231px;
   }
   100% {
     bottom: 82px;
@@ -253,9 +253,16 @@ button:hover {
   border-bottom: none;
 }
 
+.rank-result,
+.rank-stage,
 .rank-date {
   color: #777;
   font-size: 13px;
+}
+
+.rank-result {
+  margin-left: 4px;
+  font-weight: 800;
 }
 
 .empty-rank {

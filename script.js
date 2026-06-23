@@ -3,6 +3,7 @@ const player = document.getElementById('player');
 const obstacle = document.getElementById('obstacle');
 const scoreText = document.getElementById('score');
 const goalScoreText = document.getElementById('goalScore');
+const stageText = document.getElementById('stageText');
 const bestScoreText = document.getElementById('bestScore');
 const gameStatusText = document.getElementById('gameStatus');
 const startPanel = document.getElementById('startPanel');
@@ -16,38 +17,45 @@ const winScoreText = document.getElementById('winScore');
 const rankForm = document.getElementById('rankForm');
 const nicknameInput = document.getElementById('nicknameInput');
 const rankMessage = document.getElementById('rankMessage');
+const loseRankForm = document.getElementById('loseRankForm');
+const loseNicknameInput = document.getElementById('loseNicknameInput');
+const loseRankMessage = document.getElementById('loseRankMessage');
 const rankingList = document.getElementById('rankingList');
 const clearRankButton = document.getElementById('clearRankButton');
 
 const WIN_SCORE = 15;
 const OBSTACLE_SCORE = 3;
 const RANKING_KEY = 'jumpTimingRanking';
-
-const START_OBSTACLE_SPEED = 540;
-const SPEED_UP_PER_OBSTACLE = 35;
-const MAX_OBSTACLE_SPEED = 760;
 const OBSTACLE_START_OFFSET = 70;
+
+const STAGES = [
+  { level: 1, minScore: 0, speed: 500, label: '1단계' },
+  { level: 2, minScore: 6, speed: 620, label: '2단계' },
+  { level: 3, minScore: 12, speed: 760, label: '3단계' }
+];
 
 let isPlaying = false;
 let isJumping = false;
 let score = 0;
 let bestScore = Number(localStorage.getItem('jumpTimingBestScore')) || 0;
-let obstacleSpeed = START_OBSTACLE_SPEED;
+let currentStage = STAGES[0];
+let obstacleSpeed = currentStage.speed;
 let obstacleX = 0;
 let animationFrameId = null;
 let lastFrameTime = 0;
 let audioContext = null;
 let hasScoredCurrentObstacle = false;
 let isRankSavedThisRound = false;
+let currentResult = '패배';
 
 goalScoreText.textContent = WIN_SCORE;
 winScoreText.textContent = WIN_SCORE;
 bestScoreText.textContent = bestScore;
+stageText.textContent = currentStage.label;
 renderRanking();
 
 function getAudioContext() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
-
   if (!AudioContext) return null;
 
   if (!audioContext) {
@@ -59,7 +67,6 @@ function getAudioContext() {
 
 function playTone(frequency, startTime, duration, type = 'square', volume = 0.12) {
   const context = getAudioContext();
-
   if (!context) return;
 
   const oscillator = context.createOscillator();
@@ -67,20 +74,17 @@ function playTone(frequency, startTime, duration, type = 'square', volume = 0.12
 
   oscillator.type = type;
   oscillator.frequency.setValueAtTime(frequency, startTime);
-
   gainNode.gain.setValueAtTime(volume, startTime);
   gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
   oscillator.connect(gainNode);
   gainNode.connect(context.destination);
-
   oscillator.start(startTime);
   oscillator.stop(startTime + duration);
 }
 
 function playJumpSound() {
   const context = getAudioContext();
-
   if (!context) return;
 
   const now = context.currentTime;
@@ -90,7 +94,6 @@ function playJumpSound() {
 
 function playWinSound() {
   const context = getAudioContext();
-
   if (!context) return;
 
   const now = context.currentTime;
@@ -102,7 +105,6 @@ function playWinSound() {
 
 function playLoseSound() {
   const context = getAudioContext();
-
   if (!context) return;
 
   const now = context.currentTime;
@@ -115,16 +117,22 @@ function startGame() {
   isPlaying = true;
   isJumping = false;
   score = 0;
-  obstacleSpeed = START_OBSTACLE_SPEED;
+  currentStage = STAGES[0];
+  obstacleSpeed = currentStage.speed;
   hasScoredCurrentObstacle = false;
   isRankSavedThisRound = false;
+  currentResult = '패배';
 
   player.classList.remove('jump');
   scoreText.textContent = score;
+  stageText.textContent = currentStage.label;
   gameStatusText.textContent = '진행 중';
   rankMessage.textContent = '';
+  loseRankMessage.textContent = '';
   nicknameInput.value = '';
+  loseNicknameInput.value = '';
   nicknameInput.disabled = false;
+  loseNicknameInput.disabled = false;
   startPanel.classList.add('hidden');
   gameOverPanel.classList.add('hidden');
   winPanel.classList.add('hidden');
@@ -149,7 +157,6 @@ function gameLoop(currentTime) {
   if (isPlaying && obstacleX < -obstacle.offsetWidth - 10) {
     resetObstaclePosition();
     hasScoredCurrentObstacle = false;
-    obstacleSpeed = Math.min(MAX_OBSTACLE_SPEED, obstacleSpeed + SPEED_UP_PER_OBSTACLE);
   }
 
   animationFrameId = requestAnimationFrame(gameLoop);
@@ -174,9 +181,33 @@ function jump() {
   }, 520);
 }
 
+function getStageByScore(currentScore) {
+  let selectedStage = STAGES[0];
+
+  STAGES.forEach((stage) => {
+    if (currentScore >= stage.minScore) {
+      selectedStage = stage;
+    }
+  });
+
+  return selectedStage;
+}
+
+function updateStage() {
+  const nextStage = getStageByScore(score);
+
+  if (nextStage.level !== currentStage.level) {
+    currentStage = nextStage;
+    obstacleSpeed = currentStage.speed;
+    stageText.textContent = currentStage.label;
+    gameStatusText.textContent = `${currentStage.label} 진행 중`;
+  }
+}
+
 function addObstacleScore() {
   score += OBSTACLE_SCORE;
   scoreText.textContent = score;
+  updateStage();
 
   if (score >= WIN_SCORE) {
     winGame();
@@ -221,7 +252,6 @@ function saveBestScore() {
 
 function getRanking() {
   const savedRanking = localStorage.getItem(RANKING_KEY);
-
   if (!savedRanking) return [];
 
   try {
@@ -241,10 +271,17 @@ function addRanking(nickname) {
   ranking.push({
     nickname,
     score,
+    result: currentResult,
+    stage: currentStage.label,
     date: new Date().toLocaleDateString('ko-KR')
   });
 
-  ranking.sort((a, b) => b.score - a.score);
+  ranking.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (a.result === b.result) return 0;
+    return a.result === '승리' ? -1 : 1;
+  });
+
   saveRanking(ranking.slice(0, 10));
   renderRanking();
 }
@@ -261,15 +298,38 @@ function renderRanking() {
 
   ranking.forEach((rank) => {
     const li = document.createElement('li');
-    li.innerHTML = `<strong>${rank.nickname}</strong> - ${rank.score}점 <span class="rank-date">${rank.date}</span>`;
+    const result = rank.result || '기록';
+    const stage = rank.stage || '';
+    li.innerHTML = `<strong>${rank.nickname}</strong> - ${rank.score}점 <span class="rank-result">${result}</span> <span class="rank-stage">${stage}</span> <span class="rank-date">${rank.date}</span>`;
     rankingList.appendChild(li);
   });
+}
+
+function saveCurrentRank(inputElement, messageElement) {
+  if (isRankSavedThisRound) {
+    messageElement.textContent = '이미 이번 기록을 등록했습니다.';
+    return;
+  }
+
+  const nickname = inputElement.value.trim();
+
+  if (nickname.length === 0) {
+    messageElement.textContent = '닉네임을 입력해주세요.';
+    return;
+  }
+
+  addRanking(nickname);
+  isRankSavedThisRound = true;
+  nicknameInput.disabled = true;
+  loseNicknameInput.disabled = true;
+  messageElement.textContent = '랭킹에 등록되었습니다!';
 }
 
 function endGame() {
   if (!isPlaying) return;
 
   isPlaying = false;
+  currentResult = '패배';
   gameStatusText.textContent = '게임 오버';
   finalScoreText.textContent = score;
   playLoseSound();
@@ -278,12 +338,14 @@ function endGame() {
   saveBestScore();
 
   gameOverPanel.classList.remove('hidden');
+  loseNicknameInput.focus();
 }
 
 function winGame() {
   if (!isPlaying) return;
 
   isPlaying = false;
+  currentResult = '승리';
   gameStatusText.textContent = '승리';
   playWinSound();
 
@@ -312,23 +374,13 @@ winRestartButton.addEventListener('click', (event) => {
 rankForm.addEventListener('submit', (event) => {
   event.preventDefault();
   event.stopPropagation();
+  saveCurrentRank(nicknameInput, rankMessage);
+});
 
-  if (isRankSavedThisRound) {
-    rankMessage.textContent = '이미 이번 기록을 등록했습니다.';
-    return;
-  }
-
-  const nickname = nicknameInput.value.trim();
-
-  if (nickname.length === 0) {
-    rankMessage.textContent = '닉네임을 입력해주세요.';
-    return;
-  }
-
-  addRanking(nickname);
-  isRankSavedThisRound = true;
-  nicknameInput.disabled = true;
-  rankMessage.textContent = '랭킹에 등록되었습니다!';
+loseRankForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  saveCurrentRank(loseNicknameInput, loseRankMessage);
 });
 
 clearRankButton.addEventListener('click', () => {

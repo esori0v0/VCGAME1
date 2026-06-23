@@ -37,6 +37,7 @@ const resumeButton = document.getElementById('resumeButton');
 const FINAL_WIN_SCORE = 45;
 const OBSTACLE_SCORE = 1;
 const RANKING_KEY = 'jumpTimingRanking';
+const BEST_SCORE_KEY = 'jumpTimingBestScore';
 const OBSTACLE_START_OFFSET = 70;
 const PLAYER_GROUND_BOTTOM = 82;
 const BASE_JUMP_VELOCITY = 760;
@@ -54,7 +55,6 @@ const STAGES = [
   { level: 3, goalScore: 45, speed: 860, label: '3단계' }
 ];
 
-// 플레이어가 롱점프로 넘을 수 있는 범위 안에서 높이 차이를 크게 준 장애물 목록
 const OBSTACLE_HEIGHTS = [42, 58, 76, 96, 118, 138, 152];
 
 let isPlaying = false;
@@ -65,7 +65,7 @@ let holdTime = 0;
 let playerY = PLAYER_GROUND_BOTTOM;
 let playerVelocityY = 0;
 let score = 0;
-let bestScore = Number(localStorage.getItem('jumpTimingBestScore')) || 0;
+let bestScore = Number(localStorage.getItem(BEST_SCORE_KEY)) || 0;
 let currentStage = STAGES[0];
 let obstacleSpeed = currentStage.speed;
 let obstacleX = 0;
@@ -88,6 +88,7 @@ let isMedkitActive = false;
 let pausedInvincibleRemainTime = 0;
 
 function initScreen() {
+  obstacleSpeed = getStageSpeed();
   goalScoreText.textContent = currentStage.goalScore;
   winScoreText.textContent = FINAL_WIN_SCORE;
   bestScoreText.textContent = bestScore;
@@ -95,6 +96,14 @@ function initScreen() {
   updateStageCostume();
   updateLifeUI();
   renderRanking();
+}
+
+function getStageSpeed() {
+  const width = game.clientWidth || 920;
+  if (width < 380) return currentStage.speed * 0.72;
+  if (width < 520) return currentStage.speed * 0.82;
+  if (width < 720) return currentStage.speed * 0.9;
+  return currentStage.speed;
 }
 
 function getAudioContext() {
@@ -155,7 +164,7 @@ function playHealSound() {
 }
 
 function updateLifeUI() {
-  lifeText.textContent = '❤️'.repeat(life) + '🖤'.repeat(MAX_LIFE - life);
+  lifeText.textContent = '♥'.repeat(life) + '♡'.repeat(MAX_LIFE - life);
 }
 
 function updateStageCostume() {
@@ -212,8 +221,6 @@ function clearInvincible() {
 }
 
 function decideMedkitSpawnScores() {
-  // 단계마다 최대 3번 등장.
-  // 시작 직후/클리어 직전은 피하고, 서로 최소 간격을 둬서 한 번에 몰려 나오지 않게 배치한다.
   const goalScore = currentStage.goalScore;
   const minGap = 4;
   const candidates = [];
@@ -227,10 +234,7 @@ function decideMedkitSpawnScores() {
   while (medkitSpawnScores.length < MAX_MEDKIT_PER_STAGE && candidates.length > 0) {
     const randomIndex = Math.floor(Math.random() * candidates.length);
     const selectedScore = candidates.splice(randomIndex, 1)[0];
-
-    const isTooClose = medkitSpawnScores.some((savedScore) => {
-      return Math.abs(savedScore - selectedScore) < minGap;
-    });
+    const isTooClose = medkitSpawnScores.some((savedScore) => Math.abs(savedScore - selectedScore) < minGap);
 
     if (!isTooClose) {
       medkitSpawnScores.push(selectedScore);
@@ -252,7 +256,7 @@ function startGame() {
   score = 0;
   life = MAX_LIFE;
   currentStage = STAGES[0];
-  obstacleSpeed = currentStage.speed;
+  obstacleSpeed = getStageSpeed();
   hasScoredCurrentObstacle = false;
   isRankSavedThisRound = false;
   currentResult = '패배';
@@ -362,7 +366,7 @@ function resetObstaclePosition() {
 function spawnMedkit() {
   medkitSpawnIndex += 1;
   isMedkitActive = true;
-  medkitX = game.clientWidth + OBSTACLE_START_OFFSET + 180 + Math.floor(Math.random() * 260);
+  medkitX = game.clientWidth + OBSTACLE_START_OFFSET + 140 + Math.floor(Math.random() * 220);
   medkit.style.bottom = `${135 + Math.floor(Math.random() * 85)}px`;
   medkit.style.transform = `translateX(${medkitX}px)`;
   medkit.classList.remove('hidden');
@@ -403,8 +407,8 @@ function clearCurrentStage() {
   playWinSound();
 
   gameStatusText.textContent = `${currentStage.label} 클리어`;
-  stageClearTitle.textContent = `${currentStage.label} 클리어!`;
-  stageClearMessage.textContent = `${nextStage.label}는 0점부터 다시 시작합니다. 장애물 속도가 더 빨라지고 목표 점수는 ${nextStage.goalScore}점입니다.`;
+  stageClearTitle.textContent = `${currentStage.label} 클리어`;
+  stageClearMessage.textContent = `${nextStage.label}로 이동합니다. 점수는 0점부터 다시 시작하고 목표 점수는 ${nextStage.goalScore}점입니다.`;
   stageClearPanel.classList.remove('hidden');
 }
 
@@ -413,7 +417,7 @@ function startNextStage() {
   if (!nextStage) return;
 
   currentStage = nextStage;
-  obstacleSpeed = currentStage.speed;
+  obstacleSpeed = getStageSpeed();
   score = 0;
   life = MAX_LIFE;
   playerY = PLAYER_GROUND_BOTTOM;
@@ -515,11 +519,9 @@ function collectMedkit() {
     return;
   }
 
-  // 하트가 이미 가득 찬 상태에서 먹으면 정확히 5초 동안 무적
   setInvincible(MEDKIT_INVINCIBLE_TIME, true);
   showEffect('5초 무적!');
 }
-
 
 function pauseGame() {
   if (!isPlaying || isPaused) return;
@@ -575,7 +577,7 @@ function stopGameLoop() {
 function saveBestScore() {
   if (score > bestScore) {
     bestScore = score;
-    localStorage.setItem('jumpTimingBestScore', bestScore);
+    localStorage.setItem(BEST_SCORE_KEY, bestScore);
     bestScoreText.textContent = bestScore;
   }
 }
@@ -651,7 +653,7 @@ function saveCurrentRank(inputElement, messageElement) {
   isRankSavedThisRound = true;
   nicknameInput.disabled = true;
   loseNicknameInput.disabled = true;
-  messageElement.textContent = '랭킹에 등록되었습니다!';
+  messageElement.textContent = '랭킹에 등록했습니다.';
 }
 
 function endGame() {
@@ -732,18 +734,23 @@ clearRankButton.addEventListener('click', () => {
 });
 
 game.addEventListener('mousedown', (event) => {
-  if (event.target.tagName === 'BUTTON' || event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL') return;
+  if (event.target.closest('button, input, label')) return;
   jump();
 });
 
 game.addEventListener('mouseup', stopHoldingJump);
 game.addEventListener('mouseleave', stopHoldingJump);
 game.addEventListener('touchstart', (event) => {
-  if (event.target.tagName === 'BUTTON' || event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL') return;
+  if (event.target.closest('button, input, label')) return;
   event.preventDefault();
   jump();
 }, { passive: false });
 game.addEventListener('touchend', stopHoldingJump);
+game.addEventListener('touchcancel', stopHoldingJump);
+
+window.addEventListener('resize', () => {
+  obstacleSpeed = getStageSpeed();
+});
 
 document.addEventListener('keydown', (event) => {
   if (event.code === 'KeyP' || event.code === 'Escape') {

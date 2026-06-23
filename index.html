@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>점프 타이밍 게임</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="game-wrap">
+    <section class="title-area">
+      <h1>점프 타이밍 게임</h1>
+      <p>장애물이 다가오면 스페이스바 또는 클릭으로 점프하세요!</p>
+    </section>
+
+    <section class="hud">
+      <div>점수: <strong id="score">0</strong></div>
+      <div>최고점수: <strong id="bestScore">0</strong></div>
+      <div>상태: <strong id="gameStatus">대기 중</strong></div>
+    </section>
+
+    <section id="game" class="game" aria-label="점프 타이밍 게임 화면">
+      <div class="sky-text">SPACE / CLICK</div>
+      <div id="player" class="player"></div>
+      <div id="obstacle" class="obstacle"></div>
+      <div class="ground"></div>
+
+      <div id="startPanel" class="start-panel">
+        <h2>게임 시작</h2>
+        <p>장애물을 넘으며 최대한 오래 살아남으세요.</p>
+        <button id="startButton" type="button">시작하기</button>
+      </div>
+
+      <div id="gameOverPanel" class="game-over-panel hidden">
+        <h2>게임 오버</h2>
+        <p>최종 점수: <strong id="finalScore">0</strong></p>
+        <button id="restartButton" type="button">다시 시작</button>
+      </div>
+    </section>
+
+    <section class="guide">
+      <h2>조작법</h2>
+      <p><strong>스페이스바</strong>, <strong>↑ 방향키</strong>, 또는 <strong>마우스 클릭</strong>으로 점프합니다.</p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

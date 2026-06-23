@@ -1,0 +1,217 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(180deg, #dff4ff 0%, #f7fbff 100%);
+  color: #222;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.game-wrap {
+  width: min(920px, 92vw);
+}
+
+.title-area {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.title-area h1 {
+  margin: 0 0 8px;
+  font-size: 36px;
+}
+
+.title-area p {
+  margin: 0;
+  color: #555;
+}
+
+.hud {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 14px 18px;
+  background: #ffffff;
+  border: 2px solid #222;
+  border-radius: 16px;
+  box-shadow: 0 6px 0 #222;
+}
+
+.game {
+  position: relative;
+  width: 100%;
+  height: 360px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #87ceeb 0%, #d7f2ff 72%, #85c76f 72%, #6bad55 100%);
+  border: 4px solid #222;
+  border-radius: 20px;
+  box-shadow: 0 10px 0 #222;
+  cursor: pointer;
+}
+
+.sky-text {
+  position: absolute;
+  top: 26px;
+  left: 30px;
+  font-size: 28px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.6);
+  user-select: none;
+}
+
+.ground {
+  position: absolute;
+  left: 0;
+  bottom: 78px;
+  width: 100%;
+  height: 5px;
+  background: #222;
+}
+
+.player {
+  position: absolute;
+  left: 90px;
+  bottom: 82px;
+  width: 48px;
+  height: 48px;
+  background: #ffcc33;
+  border: 4px solid #222;
+  border-radius: 14px;
+  transition: transform 0.05s linear;
+}
+
+.player::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  background: #222;
+  border-radius: 50%;
+}
+
+.player.jump {
+  animation: jump 520ms ease-out;
+}
+
+@keyframes jump {
+  0% {
+    bottom: 82px;
+  }
+  45% {
+    bottom: 205px;
+  }
+  100% {
+    bottom: 82px;
+  }
+}
+
+.obstacle {
+  position: absolute;
+  right: -70px;
+  bottom: 82px;
+  width: 34px;
+  height: 54px;
+  background: #e94b35;
+  border: 4px solid #222;
+  border-radius: 10px 10px 4px 4px;
+}
+
+.obstacle.move {
+  animation-name: obstacleMove;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes obstacleMove {
+  from {
+    right: -70px;
+  }
+  to {
+    right: 100%;
+  }
+}
+
+.start-panel,
+.game-over-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.78);
+  z-index: 10;
+}
+
+.start-panel h2,
+.game-over-panel h2 {
+  margin: 0 0 8px;
+  font-size: 34px;
+}
+
+.start-panel p,
+.game-over-panel p {
+  margin: 0 0 20px;
+  color: #333;
+}
+
+button {
+  padding: 12px 22px;
+  font-size: 18px;
+  font-weight: 700;
+  background: #222;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+.hidden {
+  display: none;
+}
+
+.guide {
+  margin-top: 18px;
+  padding: 14px 18px;
+  background: #fff;
+  border: 2px solid #222;
+  border-radius: 16px;
+}
+
+.guide h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.guide p {
+  margin: 0;
+  color: #444;
+}
+
+@media (max-width: 640px) {
+  .title-area h1 {
+    font-size: 28px;
+  }
+
+  .hud {
+    flex-direction: column;
+  }
+
+  .game {
+    height: 320px;
+  }
+}

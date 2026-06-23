@@ -87,6 +87,7 @@ function initScreen() {
   winScoreText.textContent = FINAL_WIN_SCORE;
   bestScoreText.textContent = bestScore;
   stageText.textContent = currentStage.label;
+  updateStageCostume();
   updateLifeUI();
   renderRanking();
 }
@@ -152,6 +153,11 @@ function updateLifeUI() {
   lifeText.textContent = '❤️'.repeat(life) + '🖤'.repeat(MAX_LIFE - life);
 }
 
+function updateStageCostume() {
+  player.classList.remove('stage-1', 'stage-2', 'stage-3');
+  player.classList.add(`stage-${currentStage.level}`);
+}
+
 function showEffect(message) {
   effectText.textContent = message;
   effectText.classList.remove('hidden');
@@ -200,22 +206,32 @@ function clearInvincible() {
 }
 
 function decideMedkitSpawnScores() {
-  // 단계마다 최대 3번 등장. 너무 초반/마지막에 몰리지 않도록 점수 구간을 나눠서 랜덤 배치.
-  const safeGoalScore = Math.max(currentStage.goalScore, MAX_MEDKIT_PER_STAGE + 2);
-  const sectionSize = safeGoalScore / MAX_MEDKIT_PER_STAGE;
+  // 단계마다 최대 3번 등장.
+  // 시작 직후/클리어 직전은 피하고, 서로 최소 간격을 둬서 한 번에 몰려 나오지 않게 배치한다.
+  const goalScore = currentStage.goalScore;
+  const minGap = 4;
+  const candidates = [];
 
-  medkitSpawnScores = Array.from({ length: MAX_MEDKIT_PER_STAGE }, (_, index) => {
-    const sectionStart = Math.floor(index * sectionSize) + 1;
-    const sectionEnd = Math.min(
-      currentStage.goalScore - 2,
-      Math.floor((index + 1) * sectionSize)
-    );
-    const minScore = Math.max(2, sectionStart);
-    const maxScore = Math.max(minScore, sectionEnd);
-    return minScore + Math.floor(Math.random() * (maxScore - minScore + 1));
-  });
+  for (let scorePoint = 3; scorePoint <= goalScore - 3; scorePoint += 1) {
+    candidates.push(scorePoint);
+  }
 
-  medkitSpawnScores = [...new Set(medkitSpawnScores)].sort((a, b) => a - b);
+  medkitSpawnScores = [];
+
+  while (medkitSpawnScores.length < MAX_MEDKIT_PER_STAGE && candidates.length > 0) {
+    const randomIndex = Math.floor(Math.random() * candidates.length);
+    const selectedScore = candidates.splice(randomIndex, 1)[0];
+
+    const isTooClose = medkitSpawnScores.some((savedScore) => {
+      return Math.abs(savedScore - selectedScore) < minGap;
+    });
+
+    if (!isTooClose) {
+      medkitSpawnScores.push(selectedScore);
+    }
+  }
+
+  medkitSpawnScores.sort((a, b) => a - b);
   medkitSpawnIndex = 0;
 }
 
@@ -241,6 +257,7 @@ function startGame() {
 
   updatePlayerPosition();
   updateLifeUI();
+  updateStageCostume();
   scoreText.textContent = score;
   stageText.textContent = currentStage.label;
   goalScoreText.textContent = currentStage.goalScore;
@@ -404,6 +421,7 @@ function startNextStage() {
 
   updatePlayerPosition();
   updateLifeUI();
+  updateStageCostume();
   scoreText.textContent = score;
   stageText.textContent = currentStage.label;
   goalScoreText.textContent = currentStage.goalScore;

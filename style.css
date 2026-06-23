@@ -107,7 +107,7 @@ body {
     bottom: 82px;
   }
   45% {
-    bottom: 205px;
+    bottom: 225px;
   }
   100% {
     bottom: 82px;
@@ -141,7 +141,8 @@ body {
 }
 
 .start-panel,
-.game-over-panel {
+.game-over-panel,
+.win-panel {
   position: absolute;
   inset: 0;
   display: flex;
@@ -154,15 +155,21 @@ body {
 }
 
 .start-panel h2,
-.game-over-panel h2 {
+.game-over-panel h2,
+.win-panel h2 {
   margin: 0 0 8px;
   font-size: 34px;
 }
 
 .start-panel p,
-.game-over-panel p {
+.game-over-panel p,
+.win-panel p {
   margin: 0 0 20px;
   color: #333;
+}
+
+.win-panel h2 {
+  font-size: 42px;
 }
 
 button {

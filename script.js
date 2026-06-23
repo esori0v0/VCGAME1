@@ -30,30 +30,70 @@ goalScoreText.textContent = WIN_SCORE;
 winScoreText.textContent = WIN_SCORE;
 bestScoreText.textContent = bestScore;
 
-function playJumpSound() {
+function getAudioContext() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
 
-  if (!AudioContext) return;
+  if (!AudioContext) return null;
 
   if (!audioContext) {
     audioContext = new AudioContext();
   }
 
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
+  return audioContext;
+}
 
-  oscillator.type = 'square';
-  oscillator.frequency.setValueAtTime(420, audioContext.currentTime);
-  oscillator.frequency.exponentialRampToValueAtTime(760, audioContext.currentTime + 0.08);
+function playTone(frequency, startTime, duration, type = 'square', volume = 0.12) {
+  const context = getAudioContext();
 
-  gainNode.gain.setValueAtTime(0.12, audioContext.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.12);
+  if (!context) return;
+
+  const oscillator = context.createOscillator();
+  const gainNode = context.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+
+  gainNode.gain.setValueAtTime(volume, startTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
   oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+  gainNode.connect(context.destination);
 
-  oscillator.start();
-  oscillator.stop(audioContext.currentTime + 0.12);
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration);
+}
+
+function playJumpSound() {
+  const context = getAudioContext();
+
+  if (!context) return;
+
+  const now = context.currentTime;
+  playTone(420, now, 0.12, 'square', 0.12);
+  playTone(760, now + 0.04, 0.08, 'square', 0.08);
+}
+
+function playWinSound() {
+  const context = getAudioContext();
+
+  if (!context) return;
+
+  const now = context.currentTime;
+  playTone(523, now, 0.14, 'triangle', 0.13);
+  playTone(659, now + 0.13, 0.14, 'triangle', 0.13);
+  playTone(784, now + 0.26, 0.18, 'triangle', 0.15);
+  playTone(1046, now + 0.42, 0.28, 'triangle', 0.16);
+}
+
+function playLoseSound() {
+  const context = getAudioContext();
+
+  if (!context) return;
+
+  const now = context.currentTime;
+  playTone(220, now, 0.18, 'sawtooth', 0.13);
+  playTone(165, now + 0.16, 0.22, 'sawtooth', 0.12);
+  playTone(110, now + 0.36, 0.32, 'sawtooth', 0.12);
 }
 
 function startGame() {
@@ -147,6 +187,7 @@ function endGame() {
   isPlaying = false;
   gameStatusText.textContent = '게임 오버';
   finalScoreText.textContent = score;
+  playLoseSound();
 
   stopGameLoop();
   saveBestScore();
@@ -159,6 +200,7 @@ function winGame() {
 
   isPlaying = false;
   gameStatusText.textContent = '승리';
+  playWinSound();
 
   stopGameLoop();
   saveBestScore();

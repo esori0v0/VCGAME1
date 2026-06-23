@@ -3,6 +3,7 @@ const player = document.getElementById('player');
 const obstacle = document.getElementById('obstacle');
 const medkit = document.getElementById('medkit');
 const effectText = document.getElementById('effectText');
+const invincibleTimerText = document.getElementById('invincibleTimer');
 const scoreText = document.getElementById('score');
 const goalScoreText = document.getElementById('goalScore');
 const stageText = document.getElementById('stageText');
@@ -72,6 +73,9 @@ let currentResult = '패배';
 let life = MAX_LIFE;
 let isInvincible = false;
 let invincibleTimer = null;
+let invincibleCountdownTimer = null;
+let invincibleEndTime = 0;
+let medkitSpawnScore = 0;
 let medkitSpawnedThisStage = false;
 let medkitCollectedThisStage = false;
 let isMedkitActive = false;
@@ -152,20 +156,46 @@ function showEffect(message) {
   setTimeout(() => effectText.classList.add('hidden'), 900);
 }
 
-function setInvincible(duration) {
+function setInvincible(duration, showTimer = false) {
   isInvincible = true;
   player.classList.add('invincible');
   clearTimeout(invincibleTimer);
+  clearInterval(invincibleCountdownTimer);
+
+  if (showTimer) {
+    invincibleEndTime = Date.now() + duration;
+    updateInvincibleTimer();
+    invincibleTimerText.classList.remove('hidden');
+    invincibleCountdownTimer = setInterval(updateInvincibleTimer, 100);
+  } else {
+    invincibleTimerText.classList.add('hidden');
+  }
+
   invincibleTimer = setTimeout(() => {
     isInvincible = false;
     player.classList.remove('invincible');
+    clearInterval(invincibleCountdownTimer);
+    invincibleTimerText.classList.add('hidden');
   }, duration);
+}
+
+function updateInvincibleTimer() {
+  const remainTime = Math.max(0, invincibleEndTime - Date.now());
+  invincibleTimerText.textContent = `무적 ${(remainTime / 1000).toFixed(1)}초`;
 }
 
 function clearInvincible() {
   isInvincible = false;
   player.classList.remove('invincible');
   clearTimeout(invincibleTimer);
+  clearInterval(invincibleCountdownTimer);
+  invincibleTimerText.classList.add('hidden');
+}
+
+function decideMedkitSpawnScore() {
+  const minScore = Math.min(3, currentStage.goalScore);
+  const maxScore = Math.max(minScore, currentStage.goalScore - 4);
+  medkitSpawnScore = minScore + Math.floor(Math.random() * (maxScore - minScore + 1));
 }
 
 function startGame() {
@@ -185,6 +215,7 @@ function startGame() {
   medkitSpawnedThisStage = false;
   medkitCollectedThisStage = false;
   isMedkitActive = false;
+  decideMedkitSpawnScore();
   clearInvincible();
 
   updatePlayerPosition();
@@ -275,7 +306,7 @@ function resetObstaclePosition() {
   obstacle.style.height = `${getRandomObstacleHeight()}px`;
   obstacle.style.transform = `translateX(${obstacleX}px)`;
 
-  if (!medkitSpawnedThisStage && score >= Math.floor(currentStage.goalScore / 2)) {
+  if (!medkitSpawnedThisStage && score >= medkitSpawnScore) {
     spawnMedkit();
   }
 }
@@ -283,8 +314,8 @@ function resetObstaclePosition() {
 function spawnMedkit() {
   medkitSpawnedThisStage = true;
   isMedkitActive = true;
-  medkitX = game.clientWidth + OBSTACLE_START_OFFSET + 250;
-  medkit.style.bottom = `${150 + Math.floor(Math.random() * 45)}px`;
+  medkitX = game.clientWidth + OBSTACLE_START_OFFSET + 180 + Math.floor(Math.random() * 260);
+  medkit.style.bottom = `${135 + Math.floor(Math.random() * 85)}px`;
   medkit.style.transform = `translateX(${medkitX}px)`;
   medkit.classList.remove('hidden');
 }
@@ -345,6 +376,7 @@ function startNextStage() {
   medkitSpawnedThisStage = false;
   medkitCollectedThisStage = false;
   isMedkitActive = false;
+  decideMedkitSpawnScore();
   clearInvincible();
   isPlaying = true;
 
@@ -431,7 +463,7 @@ function collectMedkit() {
     return;
   }
 
-  setInvincible(MEDKIT_INVINCIBLE_TIME);
+  setInvincible(MEDKIT_INVINCIBLE_TIME, true);
   showEffect('5초 무적!');
 }
 

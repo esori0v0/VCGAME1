@@ -323,3 +323,26 @@ button:hover {
     opacity: 0.35;
   }
 }
+
+
+/* .medkit 규칙이 .hidden보다 아래에 있어서 display:flex가 hidden을 덮어쓰는 문제 방지 */
+.medkit.hidden {
+  display: none;
+}
+
+.invincible-timer {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 3px solid #222;
+  border-radius: 999px;
+  font-size: 18px;
+  font-weight: 900;
+  z-index: 5;
+}
+
+.invincible-timer.hidden {
+  display: none;
+}

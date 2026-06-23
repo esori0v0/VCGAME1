@@ -1,9 +1,12 @@
 const game = document.getElementById('game');
 const player = document.getElementById('player');
 const obstacle = document.getElementById('obstacle');
+const medkit = document.getElementById('medkit');
+const effectText = document.getElementById('effectText');
 const scoreText = document.getElementById('score');
 const goalScoreText = document.getElementById('goalScore');
 const stageText = document.getElementById('stageText');
+const lifeText = document.getElementById('lifeText');
 const bestScoreText = document.getElementById('bestScore');
 const gameStatusText = document.getElementById('gameStatus');
 const startPanel = document.getElementById('startPanel');
@@ -28,59 +31,76 @@ const rankingList = document.getElementById('rankingList');
 const clearRankButton = document.getElementById('clearRankButton');
 
 const FINAL_WIN_SCORE = 45;
-const OBSTACLE_SCORE = 3;
+const OBSTACLE_SCORE = 1;
 const RANKING_KEY = 'jumpTimingRanking';
 const OBSTACLE_START_OFFSET = 70;
+const PLAYER_GROUND_BOTTOM = 82;
+const BASE_JUMP_VELOCITY = 760;
+const HOLD_BOOST_POWER = 1800;
+const MAX_HOLD_TIME = 0.24;
+const GRAVITY = 2450;
+const MAX_LIFE = 3;
+const DAMAGE_INVINCIBLE_TIME = 1000;
+const MEDKIT_INVINCIBLE_TIME = 5000;
 
 const STAGES = [
-  { level: 1, goalScore: 15, speed: 500, label: '1단계' },
-  { level: 2, goalScore: 30, speed: 650, label: '2단계' },
-  { level: 3, goalScore: 45, speed: 820, label: '3단계' }
+  { level: 1, goalScore: 15, speed: 520, label: '1단계' },
+  { level: 2, goalScore: 30, speed: 690, label: '2단계' },
+  { level: 3, goalScore: 45, speed: 860, label: '3단계' }
 ];
+
+const OBSTACLE_HEIGHTS = [58, 70, 84, 98];
 
 let isPlaying = false;
 let isJumping = false;
+let isHoldingJump = false;
+let holdTime = 0;
+let playerY = PLAYER_GROUND_BOTTOM;
+let playerVelocityY = 0;
 let score = 0;
 let bestScore = Number(localStorage.getItem('jumpTimingBestScore')) || 0;
 let currentStage = STAGES[0];
 let obstacleSpeed = currentStage.speed;
 let obstacleX = 0;
+let medkitX = 0;
 let animationFrameId = null;
 let lastFrameTime = 0;
 let audioContext = null;
 let hasScoredCurrentObstacle = false;
 let isRankSavedThisRound = false;
 let currentResult = '패배';
+let life = MAX_LIFE;
+let isInvincible = false;
+let invincibleTimer = null;
+let medkitSpawnedThisStage = false;
+let medkitCollectedThisStage = false;
+let isMedkitActive = false;
 
-goalScoreText.textContent = currentStage.goalScore;
-winScoreText.textContent = FINAL_WIN_SCORE;
-bestScoreText.textContent = bestScore;
-stageText.textContent = currentStage.label;
-renderRanking();
+function initScreen() {
+  goalScoreText.textContent = currentStage.goalScore;
+  winScoreText.textContent = FINAL_WIN_SCORE;
+  bestScoreText.textContent = bestScore;
+  stageText.textContent = currentStage.label;
+  updateLifeUI();
+  renderRanking();
+}
 
 function getAudioContext() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return null;
-
-  if (!audioContext) {
-    audioContext = new AudioContext();
-  }
-
+  if (!audioContext) audioContext = new AudioContext();
   return audioContext;
 }
 
 function playTone(frequency, startTime, duration, type = 'square', volume = 0.12) {
   const context = getAudioContext();
   if (!context) return;
-
   const oscillator = context.createOscillator();
   const gainNode = context.createGain();
-
   oscillator.type = type;
   oscillator.frequency.setValueAtTime(frequency, startTime);
   gainNode.gain.setValueAtTime(volume, startTime);
   gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
   oscillator.connect(gainNode);
   gainNode.connect(context.destination);
   oscillator.start(startTime);
@@ -90,7 +110,6 @@ function playTone(frequency, startTime, duration, type = 'square', volume = 0.12
 function playJumpSound() {
   const context = getAudioContext();
   if (!context) return;
-
   const now = context.currentTime;
   playTone(420, now, 0.12, 'square', 0.12);
   playTone(760, now + 0.04, 0.08, 'square', 0.08);
@@ -99,7 +118,6 @@ function playJumpSound() {
 function playWinSound() {
   const context = getAudioContext();
   if (!context) return;
-
   const now = context.currentTime;
   playTone(523, now, 0.14, 'triangle', 0.13);
   playTone(659, now + 0.13, 0.14, 'triangle', 0.13);
@@ -110,24 +128,67 @@ function playWinSound() {
 function playLoseSound() {
   const context = getAudioContext();
   if (!context) return;
-
   const now = context.currentTime;
   playTone(220, now, 0.18, 'sawtooth', 0.13);
   playTone(165, now + 0.16, 0.22, 'sawtooth', 0.12);
   playTone(110, now + 0.36, 0.32, 'sawtooth', 0.12);
 }
 
+function playHealSound() {
+  const context = getAudioContext();
+  if (!context) return;
+  const now = context.currentTime;
+  playTone(660, now, 0.1, 'triangle', 0.1);
+  playTone(880, now + 0.08, 0.16, 'triangle', 0.12);
+}
+
+function updateLifeUI() {
+  lifeText.textContent = '❤️'.repeat(life) + '🖤'.repeat(MAX_LIFE - life);
+}
+
+function showEffect(message) {
+  effectText.textContent = message;
+  effectText.classList.remove('hidden');
+  setTimeout(() => effectText.classList.add('hidden'), 900);
+}
+
+function setInvincible(duration) {
+  isInvincible = true;
+  player.classList.add('invincible');
+  clearTimeout(invincibleTimer);
+  invincibleTimer = setTimeout(() => {
+    isInvincible = false;
+    player.classList.remove('invincible');
+  }, duration);
+}
+
+function clearInvincible() {
+  isInvincible = false;
+  player.classList.remove('invincible');
+  clearTimeout(invincibleTimer);
+}
+
 function startGame() {
   isPlaying = true;
   isJumping = false;
+  isHoldingJump = false;
+  holdTime = 0;
+  playerY = PLAYER_GROUND_BOTTOM;
+  playerVelocityY = 0;
   score = 0;
+  life = MAX_LIFE;
   currentStage = STAGES[0];
   obstacleSpeed = currentStage.speed;
   hasScoredCurrentObstacle = false;
   isRankSavedThisRound = false;
   currentResult = '패배';
+  medkitSpawnedThisStage = false;
+  medkitCollectedThisStage = false;
+  isMedkitActive = false;
+  clearInvincible();
 
-  player.classList.remove('jump');
+  updatePlayerPosition();
+  updateLifeUI();
   scoreText.textContent = score;
   stageText.textContent = currentStage.label;
   goalScoreText.textContent = currentStage.goalScore;
@@ -142,6 +203,8 @@ function startGame() {
   gameOverPanel.classList.add('hidden');
   stageClearPanel.classList.add('hidden');
   winPanel.classList.add('hidden');
+  medkit.classList.add('hidden');
+  effectText.classList.add('hidden');
 
   cancelAnimationFrame(animationFrameId);
   resetObstaclePosition();
@@ -155,8 +218,16 @@ function gameLoop(currentTime) {
   const deltaTime = Math.min((currentTime - lastFrameTime) / 1000, 0.033);
   lastFrameTime = currentTime;
 
+  updateJump(deltaTime);
+
   obstacleX -= obstacleSpeed * deltaTime;
   obstacle.style.transform = `translateX(${obstacleX}px)`;
+
+  if (isMedkitActive) {
+    medkitX -= obstacleSpeed * deltaTime;
+    medkit.style.transform = `translateX(${medkitX}px)`;
+    if (medkitX < -60) hideMedkit();
+  }
 
   checkGameState();
 
@@ -168,23 +239,72 @@ function gameLoop(currentTime) {
   animationFrameId = requestAnimationFrame(gameLoop);
 }
 
+function updateJump(deltaTime) {
+  if (!isJumping) return;
+
+  if (isHoldingJump && holdTime < MAX_HOLD_TIME) {
+    playerVelocityY += HOLD_BOOST_POWER * deltaTime;
+    holdTime += deltaTime;
+  }
+
+  playerVelocityY -= GRAVITY * deltaTime;
+  playerY += playerVelocityY * deltaTime;
+
+  if (playerY <= PLAYER_GROUND_BOTTOM) {
+    playerY = PLAYER_GROUND_BOTTOM;
+    playerVelocityY = 0;
+    isJumping = false;
+    isHoldingJump = false;
+    holdTime = 0;
+  }
+
+  updatePlayerPosition();
+}
+
+function updatePlayerPosition() {
+  player.style.bottom = `${playerY}px`;
+}
+
+function getRandomObstacleHeight() {
+  return OBSTACLE_HEIGHTS[Math.floor(Math.random() * OBSTACLE_HEIGHTS.length)];
+}
+
 function resetObstaclePosition() {
   const gameWidth = game.clientWidth;
   obstacleX = gameWidth + OBSTACLE_START_OFFSET;
+  obstacle.style.height = `${getRandomObstacleHeight()}px`;
   obstacle.style.transform = `translateX(${obstacleX}px)`;
+
+  if (!medkitSpawnedThisStage && score >= Math.floor(currentStage.goalScore / 2)) {
+    spawnMedkit();
+  }
+}
+
+function spawnMedkit() {
+  medkitSpawnedThisStage = true;
+  isMedkitActive = true;
+  medkitX = game.clientWidth + OBSTACLE_START_OFFSET + 250;
+  medkit.style.bottom = `${150 + Math.floor(Math.random() * 45)}px`;
+  medkit.style.transform = `translateX(${medkitX}px)`;
+  medkit.classList.remove('hidden');
+}
+
+function hideMedkit() {
+  isMedkitActive = false;
+  medkit.classList.add('hidden');
 }
 
 function jump() {
   if (!isPlaying || isJumping) return;
-
   isJumping = true;
+  isHoldingJump = true;
+  holdTime = 0;
+  playerVelocityY = BASE_JUMP_VELOCITY;
   playJumpSound();
-  player.classList.add('jump');
+}
 
-  setTimeout(() => {
-    player.classList.remove('jump');
-    isJumping = false;
-  }, 520);
+function stopHoldingJump() {
+  isHoldingJump = false;
 }
 
 function getNextStage() {
@@ -193,7 +313,6 @@ function getNextStage() {
 
 function clearCurrentStage() {
   const nextStage = getNextStage();
-
   if (!nextStage) {
     winGame();
     return;
@@ -206,7 +325,7 @@ function clearCurrentStage() {
 
   gameStatusText.textContent = `${currentStage.label} 클리어`;
   stageClearTitle.textContent = `${currentStage.label} 클리어!`;
-  stageClearMessage.textContent = `${nextStage.label}부터 장애물 속도가 더 빨라집니다.`;
+  stageClearMessage.textContent = `${nextStage.label}는 0점부터 다시 시작합니다. 장애물 속도가 더 빨라지고 목표 점수는 ${nextStage.goalScore}점입니다.`;
   stageClearPanel.classList.remove('hidden');
 }
 
@@ -216,13 +335,27 @@ function startNextStage() {
 
   currentStage = nextStage;
   obstacleSpeed = currentStage.speed;
+  score = 0;
+  life = MAX_LIFE;
+  playerY = PLAYER_GROUND_BOTTOM;
+  playerVelocityY = 0;
+  isJumping = false;
+  isHoldingJump = false;
   hasScoredCurrentObstacle = false;
+  medkitSpawnedThisStage = false;
+  medkitCollectedThisStage = false;
+  isMedkitActive = false;
+  clearInvincible();
   isPlaying = true;
 
+  updatePlayerPosition();
+  updateLifeUI();
+  scoreText.textContent = score;
   stageText.textContent = currentStage.label;
   goalScoreText.textContent = currentStage.goalScore;
   gameStatusText.textContent = `${currentStage.label} 진행 중`;
   stageClearPanel.classList.add('hidden');
+  medkit.classList.add('hidden');
 
   resetObstaclePosition();
   lastFrameTime = performance.now();
@@ -232,33 +365,74 @@ function startNextStage() {
 function addObstacleScore() {
   score += OBSTACLE_SCORE;
   scoreText.textContent = score;
-
-  if (score >= currentStage.goalScore) {
-    clearCurrentStage();
-  }
+  if (score >= currentStage.goalScore) clearCurrentStage();
 }
 
 function checkGameState() {
   const playerBox = player.getBoundingClientRect();
   const obstacleBox = obstacle.getBoundingClientRect();
 
-  const isColliding =
+  const isCollidingObstacle =
     playerBox.left < obstacleBox.right &&
     playerBox.right > obstacleBox.left &&
     playerBox.bottom > obstacleBox.top &&
     playerBox.top < obstacleBox.bottom;
 
-  if (isColliding) {
-    endGame();
+  if (isCollidingObstacle) {
+    handleObstacleHit();
     return;
   }
 
-  const passedObstacle = obstacleBox.right < playerBox.left;
+  if (isMedkitActive) {
+    const medkitBox = medkit.getBoundingClientRect();
+    const isCollidingMedkit =
+      playerBox.left < medkitBox.right &&
+      playerBox.right > medkitBox.left &&
+      playerBox.bottom > medkitBox.top &&
+      playerBox.top < medkitBox.bottom;
 
+    if (isCollidingMedkit) collectMedkit();
+  }
+
+  const passedObstacle = obstacleBox.right < playerBox.left;
   if (passedObstacle && !hasScoredCurrentObstacle) {
     hasScoredCurrentObstacle = true;
     addObstacleScore();
   }
+}
+
+function handleObstacleHit() {
+  if (isInvincible) {
+    resetObstaclePosition();
+    hasScoredCurrentObstacle = false;
+    return;
+  }
+
+  life -= 1;
+  updateLifeUI();
+  showEffect('하트 -1');
+  setInvincible(DAMAGE_INVINCIBLE_TIME);
+  resetObstaclePosition();
+  hasScoredCurrentObstacle = false;
+
+  if (life <= 0) endGame();
+}
+
+function collectMedkit() {
+  if (medkitCollectedThisStage) return;
+  medkitCollectedThisStage = true;
+  hideMedkit();
+  playHealSound();
+
+  if (life < MAX_LIFE) {
+    life = MAX_LIFE;
+    updateLifeUI();
+    showEffect('하트 회복!');
+    return;
+  }
+
+  setInvincible(MEDKIT_INVINCIBLE_TIME);
+  showEffect('5초 무적!');
 }
 
 function stopGameLoop() {
@@ -277,7 +451,6 @@ function saveBestScore() {
 function getRanking() {
   const savedRanking = localStorage.getItem(RANKING_KEY);
   if (!savedRanking) return [];
-
   try {
     return JSON.parse(savedRanking);
   } catch (error) {
@@ -291,7 +464,6 @@ function saveRanking(ranking) {
 
 function addRanking(nickname) {
   const ranking = getRanking();
-
   ranking.push({
     nickname,
     score,
@@ -301,6 +473,9 @@ function addRanking(nickname) {
   });
 
   ranking.sort((a, b) => {
+    const aStage = Number(String(a.stage || '').replace(/[^0-9]/g, '')) || 0;
+    const bStage = Number(String(b.stage || '').replace(/[^0-9]/g, '')) || 0;
+    if (bStage !== aStage) return bStage - aStage;
     if (b.score !== a.score) return b.score - a.score;
     if (a.result === b.result) return 0;
     return a.result === '승리' ? -1 : 1;
@@ -312,7 +487,6 @@ function addRanking(nickname) {
 
 function renderRanking() {
   const ranking = getRanking();
-
   rankingList.innerHTML = '';
 
   if (ranking.length === 0) {
@@ -336,7 +510,6 @@ function saveCurrentRank(inputElement, messageElement) {
   }
 
   const nickname = inputElement.value.trim();
-
   if (nickname.length === 0) {
     messageElement.textContent = '닉네임을 입력해주세요.';
     return;
@@ -351,32 +524,26 @@ function saveCurrentRank(inputElement, messageElement) {
 
 function endGame() {
   if (!isPlaying) return;
-
   isPlaying = false;
   currentResult = '패배';
   gameStatusText.textContent = '게임 오버';
   finalScoreText.textContent = score;
   playLoseSound();
-
   stopGameLoop();
   saveBestScore();
-
   gameOverPanel.classList.remove('hidden');
   loseNicknameInput.focus();
 }
 
 function winGame() {
   if (!isPlaying) return;
-
   isPlaying = false;
   currentResult = '승리';
   gameStatusText.textContent = '최종 승리';
   winScoreText.textContent = FINAL_WIN_SCORE;
   playWinSound();
-
   stopGameLoop();
   saveBestScore();
-
   winPanel.classList.remove('hidden');
   nicknameInput.focus();
 }
@@ -418,20 +585,33 @@ clearRankButton.addEventListener('click', () => {
   renderRanking();
 });
 
-game.addEventListener('click', (event) => {
+game.addEventListener('mousedown', (event) => {
   if (event.target.tagName === 'BUTTON' || event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL') return;
   jump();
 });
 
+game.addEventListener('mouseup', stopHoldingJump);
+game.addEventListener('mouseleave', stopHoldingJump);
+game.addEventListener('touchstart', (event) => {
+  if (event.target.tagName === 'BUTTON' || event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL') return;
+  event.preventDefault();
+  jump();
+}, { passive: false });
+game.addEventListener('touchend', stopHoldingJump);
+
 document.addEventListener('keydown', (event) => {
   if (event.code === 'Space' || event.code === 'ArrowUp') {
     event.preventDefault();
-
     if (!isPlaying && !startPanel.classList.contains('hidden')) {
       startGame();
       return;
     }
-
-    jump();
+    if (!event.repeat) jump();
   }
 });
+
+document.addEventListener('keyup', (event) => {
+  if (event.code === 'Space' || event.code === 'ArrowUp') stopHoldingJump();
+});
+
+initScreen();

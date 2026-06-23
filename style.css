@@ -98,29 +98,13 @@ body {
   border-radius: 50%;
 }
 
-.player.jump {
-  animation: jump 520ms ease-out;
-}
-
-@keyframes jump {
-  0% {
-    bottom: 82px;
-  }
-  45% {
-    bottom: 231px;
-  }
-  100% {
-    bottom: 82px;
-  }
-}
-
 .obstacle {
   position: absolute;
   left: 0;
   right: auto;
   bottom: 82px;
   width: 34px;
-  height: 54px;
+  height: 70px;
   background: #e94b35;
   border: 4px solid #222;
   border-radius: 10px 10px 4px 4px;
@@ -294,5 +278,48 @@ button:hover {
   .ranking-title-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+.medkit {
+  position: absolute;
+  left: 0;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #ffffff;
+  border: 4px solid #222;
+  border-radius: 10px;
+  font-size: 20px;
+  will-change: transform;
+  z-index: 3;
+}
+
+.effect-text {
+  position: absolute;
+  top: 82px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #222;
+  border-radius: 999px;
+  font-size: 20px;
+  font-weight: 900;
+  z-index: 4;
+}
+
+.player.invincible {
+  animation: invincibleBlink 0.18s infinite alternate;
+}
+
+@keyframes invincibleBlink {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
   }
 }

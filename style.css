@@ -116,28 +116,15 @@ body {
 
 .obstacle {
   position: absolute;
-  right: -70px;
+  left: 0;
+  right: auto;
   bottom: 82px;
   width: 34px;
   height: 54px;
   background: #e94b35;
   border: 4px solid #222;
   border-radius: 10px 10px 4px 4px;
-}
-
-.obstacle.move {
-  animation-name: obstacleMove;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-
-@keyframes obstacleMove {
-  from {
-    right: -70px;
-  }
-  to {
-    right: 100%;
-  }
+  will-change: transform;
 }
 
 .start-panel,

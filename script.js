@@ -23,13 +23,19 @@ const WIN_SCORE = 15;
 const OBSTACLE_SCORE = 3;
 const RANKING_KEY = 'jumpTimingRanking';
 
+const START_OBSTACLE_SPEED = 540;
+const SPEED_UP_PER_OBSTACLE = 35;
+const MAX_OBSTACLE_SPEED = 760;
+const OBSTACLE_START_OFFSET = 70;
+
 let isPlaying = false;
 let isJumping = false;
 let score = 0;
 let bestScore = Number(localStorage.getItem('jumpTimingBestScore')) || 0;
-let collisionTimer = null;
-let difficultyTimer = null;
-let obstacleSpeed = 1.7;
+let obstacleSpeed = START_OBSTACLE_SPEED;
+let obstacleX = 0;
+let animationFrameId = null;
+let lastFrameTime = 0;
 let audioContext = null;
 let hasScoredCurrentObstacle = false;
 let isRankSavedThisRound = false;
@@ -109,7 +115,7 @@ function startGame() {
   isPlaying = true;
   isJumping = false;
   score = 0;
-  obstacleSpeed = 1.7;
+  obstacleSpeed = START_OBSTACLE_SPEED;
   hasScoredCurrentObstacle = false;
   isRankSavedThisRound = false;
 
@@ -123,16 +129,36 @@ function startGame() {
   gameOverPanel.classList.add('hidden');
   winPanel.classList.add('hidden');
 
-  obstacle.classList.remove('move');
-  void obstacle.offsetWidth;
-  obstacle.style.animationDuration = `${obstacleSpeed}s`;
-  obstacle.classList.add('move');
+  cancelAnimationFrame(animationFrameId);
+  resetObstaclePosition();
+  lastFrameTime = performance.now();
+  animationFrameId = requestAnimationFrame(gameLoop);
+}
 
-  clearInterval(collisionTimer);
-  clearInterval(difficultyTimer);
+function gameLoop(currentTime) {
+  if (!isPlaying) return;
 
-  collisionTimer = setInterval(checkGameState, 20);
-  difficultyTimer = setInterval(increaseDifficulty, 3000);
+  const deltaTime = Math.min((currentTime - lastFrameTime) / 1000, 0.033);
+  lastFrameTime = currentTime;
+
+  obstacleX -= obstacleSpeed * deltaTime;
+  obstacle.style.transform = `translateX(${obstacleX}px)`;
+
+  checkGameState();
+
+  if (isPlaying && obstacleX < -obstacle.offsetWidth - 10) {
+    resetObstaclePosition();
+    hasScoredCurrentObstacle = false;
+    obstacleSpeed = Math.min(MAX_OBSTACLE_SPEED, obstacleSpeed + SPEED_UP_PER_OBSTACLE);
+  }
+
+  animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function resetObstaclePosition() {
+  const gameWidth = game.clientWidth;
+  obstacleX = gameWidth + OBSTACLE_START_OFFSET;
+  obstacle.style.transform = `translateX(${obstacleX}px)`;
 }
 
 function jump() {
@@ -157,15 +183,9 @@ function addObstacleScore() {
   }
 }
 
-function increaseDifficulty() {
-  obstacleSpeed = Math.max(0.9, obstacleSpeed - 0.08);
-  obstacle.style.animationDuration = `${obstacleSpeed}s`;
-}
-
 function checkGameState() {
   const playerBox = player.getBoundingClientRect();
   const obstacleBox = obstacle.getBoundingClientRect();
-  const gameBox = game.getBoundingClientRect();
 
   const isColliding =
     playerBox.left < obstacleBox.right &&
@@ -179,23 +199,16 @@ function checkGameState() {
   }
 
   const passedObstacle = obstacleBox.right < playerBox.left;
-  const obstacleResetToRight = obstacleBox.left > gameBox.right;
 
   if (passedObstacle && !hasScoredCurrentObstacle) {
     hasScoredCurrentObstacle = true;
     addObstacleScore();
   }
-
-  if (obstacleResetToRight) {
-    hasScoredCurrentObstacle = false;
-  }
 }
 
 function stopGameLoop() {
-  obstacle.classList.remove('move');
-
-  clearInterval(collisionTimer);
-  clearInterval(difficultyTimer);
+  cancelAnimationFrame(animationFrameId);
+  animationFrameId = null;
 }
 
 function saveBestScore() {

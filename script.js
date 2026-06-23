@@ -43,6 +43,7 @@ const GRAVITY = 2450;
 const MAX_LIFE = 3;
 const DAMAGE_INVINCIBLE_TIME = 1000;
 const MEDKIT_INVINCIBLE_TIME = 5000;
+const MAX_MEDKIT_PER_STAGE = 3;
 
 const STAGES = [
   { level: 1, goalScore: 15, speed: 520, label: '1단계' },
@@ -50,7 +51,8 @@ const STAGES = [
   { level: 3, goalScore: 45, speed: 860, label: '3단계' }
 ];
 
-const OBSTACLE_HEIGHTS = [58, 70, 84, 98];
+// 플레이어가 롱점프로 넘을 수 있는 범위 안에서 높이 차이를 크게 준 장애물 목록
+const OBSTACLE_HEIGHTS = [42, 58, 76, 96, 118, 138, 152];
 
 let isPlaying = false;
 let isJumping = false;
@@ -75,9 +77,9 @@ let isInvincible = false;
 let invincibleTimer = null;
 let invincibleCountdownTimer = null;
 let invincibleEndTime = 0;
-let medkitSpawnScore = 0;
-let medkitSpawnedThisStage = false;
-let medkitCollectedThisStage = false;
+let medkitSpawnScores = [];
+let medkitSpawnIndex = 0;
+let medkitCollectedCountThisStage = 0;
 let isMedkitActive = false;
 
 function initScreen() {
@@ -182,6 +184,11 @@ function setInvincible(duration, showTimer = false) {
 function updateInvincibleTimer() {
   const remainTime = Math.max(0, invincibleEndTime - Date.now());
   invincibleTimerText.textContent = `무적 ${(remainTime / 1000).toFixed(1)}초`;
+
+  if (remainTime <= 0) {
+    clearInterval(invincibleCountdownTimer);
+    invincibleTimerText.classList.add('hidden');
+  }
 }
 
 function clearInvincible() {
@@ -192,10 +199,24 @@ function clearInvincible() {
   invincibleTimerText.classList.add('hidden');
 }
 
-function decideMedkitSpawnScore() {
-  const minScore = Math.min(3, currentStage.goalScore);
-  const maxScore = Math.max(minScore, currentStage.goalScore - 4);
-  medkitSpawnScore = minScore + Math.floor(Math.random() * (maxScore - minScore + 1));
+function decideMedkitSpawnScores() {
+  // 단계마다 최대 3번 등장. 너무 초반/마지막에 몰리지 않도록 점수 구간을 나눠서 랜덤 배치.
+  const safeGoalScore = Math.max(currentStage.goalScore, MAX_MEDKIT_PER_STAGE + 2);
+  const sectionSize = safeGoalScore / MAX_MEDKIT_PER_STAGE;
+
+  medkitSpawnScores = Array.from({ length: MAX_MEDKIT_PER_STAGE }, (_, index) => {
+    const sectionStart = Math.floor(index * sectionSize) + 1;
+    const sectionEnd = Math.min(
+      currentStage.goalScore - 2,
+      Math.floor((index + 1) * sectionSize)
+    );
+    const minScore = Math.max(2, sectionStart);
+    const maxScore = Math.max(minScore, sectionEnd);
+    return minScore + Math.floor(Math.random() * (maxScore - minScore + 1));
+  });
+
+  medkitSpawnScores = [...new Set(medkitSpawnScores)].sort((a, b) => a - b);
+  medkitSpawnIndex = 0;
 }
 
 function startGame() {
@@ -212,10 +233,10 @@ function startGame() {
   hasScoredCurrentObstacle = false;
   isRankSavedThisRound = false;
   currentResult = '패배';
-  medkitSpawnedThisStage = false;
-  medkitCollectedThisStage = false;
+  medkitSpawnIndex = 0;
+  medkitCollectedCountThisStage = 0;
   isMedkitActive = false;
-  decideMedkitSpawnScore();
+  decideMedkitSpawnScores();
   clearInvincible();
 
   updatePlayerPosition();
@@ -306,13 +327,14 @@ function resetObstaclePosition() {
   obstacle.style.height = `${getRandomObstacleHeight()}px`;
   obstacle.style.transform = `translateX(${obstacleX}px)`;
 
-  if (!medkitSpawnedThisStage && score >= medkitSpawnScore) {
+  const nextMedkitScore = medkitSpawnScores[medkitSpawnIndex];
+  if (!isMedkitActive && nextMedkitScore !== undefined && score >= nextMedkitScore) {
     spawnMedkit();
   }
 }
 
 function spawnMedkit() {
-  medkitSpawnedThisStage = true;
+  medkitSpawnIndex += 1;
   isMedkitActive = true;
   medkitX = game.clientWidth + OBSTACLE_START_OFFSET + 180 + Math.floor(Math.random() * 260);
   medkit.style.bottom = `${135 + Math.floor(Math.random() * 85)}px`;
@@ -373,10 +395,10 @@ function startNextStage() {
   isJumping = false;
   isHoldingJump = false;
   hasScoredCurrentObstacle = false;
-  medkitSpawnedThisStage = false;
-  medkitCollectedThisStage = false;
+  medkitSpawnIndex = 0;
+  medkitCollectedCountThisStage = 0;
   isMedkitActive = false;
-  decideMedkitSpawnScore();
+  decideMedkitSpawnScores();
   clearInvincible();
   isPlaying = true;
 
@@ -451,18 +473,19 @@ function handleObstacleHit() {
 }
 
 function collectMedkit() {
-  if (medkitCollectedThisStage) return;
-  medkitCollectedThisStage = true;
+  if (!isMedkitActive) return;
+  medkitCollectedCountThisStage += 1;
   hideMedkit();
   playHealSound();
 
   if (life < MAX_LIFE) {
-    life = MAX_LIFE;
+    life += 1;
     updateLifeUI();
-    showEffect('하트 회복!');
+    showEffect(`하트 +1 (${medkitCollectedCountThisStage}/${MAX_MEDKIT_PER_STAGE})`);
     return;
   }
 
+  // 하트가 이미 가득 찬 상태에서 먹으면 정확히 5초 동안 무적
   setInvincible(MEDKIT_INVINCIBLE_TIME, true);
   showEffect('5초 무적!');
 }
